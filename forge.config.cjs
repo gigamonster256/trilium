@@ -11,16 +11,22 @@ module.exports = {
     icon: "./images/app-icons/icon",
     extraResource: getExtraResourcesForPlatform(),
     afterComplete: [(buildPath, electronVersion, platform, arch, callback) => {
+      // don't move resources on mac
+      if (platform === 'darwin') {
+        return callback();
+      }
       const extraResources = getExtraResourcesForPlatform();
+      const moves = [];
       for (const resource of extraResources) {
         const sourcePath = path.join(buildPath, 'resources', path.basename(resource));
         const destPath = path.join(buildPath, path.basename(resource));
 
-        // Copy files from resources folder to root
-        fs.move(sourcePath, destPath)
-          .then(() => callback())
-          .catch(err => callback(err));
+        // Move files from resources folder to root
+        moves.push(fs.move(sourcePath, destPath));
       }
+      Promise.all(moves)
+        .then(() => callback())
+        .catch((err) => callback(err));
     }]
   },
   rebuildConfig: {
@@ -46,19 +52,12 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-dmg',
-      arch: ['x64', 'arm64'],
       config: {
         icon: "./images/app-icons/icon.icns",
       }
     },
     {
       name: '@electron-forge/maker-zip',
-      config: {
-        options: {
-          iconUrl: "https://raw.githubusercontent.com/TriliumNext/Notes/develop/images/app-icons/icon.ico",
-          icon: "./images/app-icons/icon.ico",
-        }
-      }
     }
   ],
   plugins: [
